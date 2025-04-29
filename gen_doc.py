@@ -23,13 +23,15 @@ class GenerationOptions:
     root_namespace: str
     output_dir: str
     folder_path: str
-    plantuml_server: Optional[str] = None
+    plantuml_server: Optional[str] = None,
+    verbose: Optional[bool] = False
 
 class DocumentationWorkflow:
     def __init__(self, metadata: Dict[str, Namespace], options: GenerationOptions):
         self.metadata = metadata
         self.options = options
         self.plantuml_processor = createPlantUMLProcessor(options.plantuml_server)
+        self.verbose = self.options.verbose if self.options.verbose else False
         logger.info(f"PlantUML server: {self.plantuml_processor.url}")
         
     def generate(self):
@@ -96,8 +98,8 @@ class DocumentationWorkflow:
         code_meta = CodeMeta(self.metadata)
         raw_output = ""
         components = code_meta.detect_modules()
-        # write components to file
-        write_file('debug-detect_modules.json', json.dumps(components, indent=2))
+        if self.verbose:
+            write_file('debug-detect_modules.json', json.dumps(components, indent=2))
         for component_id, namespaces in components.items():
 
             tools = {
@@ -172,16 +174,27 @@ def parse_args():
         required=False,
         help="PlantUML server URL for generating diagrams.",
     )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        required=False,
+        help="Enable verbose logging.",
+    )
     return parser.parse_args()
 
 def main():
     args = parse_args()
+    
+    logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
+    
     options = GenerationOptions(
         language=args.language.lower(),
         root_namespace=args.root_namespace,
         output_dir=args.output_dir,
         folder_path=args.folder_path,
-        plantuml_server=args.plantuml_server
+        plantuml_server=args.plantuml_server,
+        verbose=args.verbose
     )
 
     try:

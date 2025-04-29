@@ -23,7 +23,8 @@ class GenerationOptions:
     output_file: str
     folder_path: str
     plantuml_server: Optional[str] = None,
-    question: Optional[str] = None
+    question: Optional[str] = None,
+    verbose: Optional[bool] = False
 
 def question_answering(metadata: Dict[str, Namespace], options: GenerationOptions):
     llms_data = read_yaml_file('conf/llms.yaml')
@@ -52,7 +53,9 @@ def question_answering(metadata: Dict[str, Namespace], options: GenerationOption
         "namespaces_metadata_json": namespaces_metadata_json,
     }    
     
-    agents = AgentSystem("Question Answering", llms_data, agents_data, tasks_data, tools=tools)
+    agents = AgentSystem("Question Answering",
+                         llms_data, agents_data, tasks_data, tools=tools,
+                         verbose=options.verbose)
     result = agents.execute(inputs)
     logger.info(result.get('usage_metrics'))
     return result
@@ -97,10 +100,19 @@ def parse_args():
         required=True,
         help="Question to ask the system.",
     )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Enable verbose logging.",
+    )
     return parser.parse_args()
 
 def main():
     args = parse_args()
+    
+    logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
+    
     file_path, file_ext = os.path.splitext(args.output_file)
     
     options = GenerationOptions(
@@ -109,7 +121,8 @@ def main():
         output_file=file_path,
         folder_path=args.folder_path,
         plantuml_server=args.plantuml_server,
-        question=args.question
+        question=args.question,
+        verbose=args.verbose if args.verbose else False
     )
 
     try:

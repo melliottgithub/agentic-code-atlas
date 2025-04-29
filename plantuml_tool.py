@@ -1,9 +1,12 @@
 import json
+import logging
 from typing import Optional, Type
 from pydantic import BaseModel, Field, PrivateAttr
 from crewai.tools import BaseTool
 
 from plantuml import PlantUML
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_PLANTUML_SERVER = "http://www.plantuml.com/plantuml/img/"
 
@@ -28,7 +31,6 @@ class PlantUMLExportTool(BaseTool):
         self._output_file = output_file
 
     def _run(self, plantuml_text: str) -> str:
-        # print(f"PlantUMLExportTool -> Exporting PlantUML diagram to PNG")
         try:
             image = self._plant_uml.processes(plantuml_text)
             with open(self._output_file, "wb") as file:
@@ -36,5 +38,5 @@ class PlantUMLExportTool(BaseTool):
             return json.dumps({"success": True, "output_file": self._output_file}, indent=None)
         except Exception as e:
             error_message = e.message if hasattr(e, 'message') else 'Unknown error (probably a syntax error in the PlantUML text)'
-            print(f"Error exporting PlantUML diagram to PNG: {error_message}")
+            logging.error(f"Error exporting PlantUML diagram to PNG: {error_message}")
             return json.dumps({"success": False, "message": error_message}, indent=None)

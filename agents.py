@@ -10,7 +10,7 @@ os.environ["OTEL_SDK_DISABLED"] = "true"
 # os.environ["LITELLM_LOG"] = "DEBUG"
 
 VERBOSE = False
-MAX_RPM = 120
+MAX_RPM = 30
 
 class AgentSystem:
     def __init__(self, 
@@ -36,7 +36,7 @@ class AgentSystem:
 
         self.llms = self._create_llms(llms)
         self.agents = self._create_agents(agents_data)
-        self.tasks = self._create_tasks(tasks_data, self.agents)
+        self.tasks = self._create_tasks(tasks_data, self.agents, verbose)
 
         self.crew = Crew(
             name=name,
@@ -44,7 +44,7 @@ class AgentSystem:
             tasks=self.tasks,
             process=Process.sequential,
             max_rpm=max_rpm,
-            verbose=verbose,
+            verbose=False,
             cache=False, # results of tools
             share_crew=False,
         )
@@ -77,14 +77,14 @@ class AgentSystem:
                 respect_context_window=False,
                 use_system_prompt=True,
                 memory=False,
-                verbose=VERBOSE,
+                verbose=False,
                 allow_delegation=False
             )
             agents[agent_info.get('role')] = agent  # Store agents by their role
         
         return agents
 
-    def _create_tasks(self, tasks_data, agents: Dict[str, Agent]) -> List[Task]:
+    def _create_tasks(self, tasks_data, agents: Dict[str, Agent], verbose: bool) -> List[Task]:
         tasks = []
         for task_name, task_info in tasks_data.items():
             agent_role = task_info.get('agent_role')  # Get the agent role for this task
@@ -102,7 +102,6 @@ class AgentSystem:
                 if tool is None:
                     raise ValueError(f"Tool with name '{tool_name}' not found for task '{task_name}'")
                 tools.append(tool)
-                #print(f"Tool {tool_name} added to task {task_name}")
 
             task = Task(
                 name=task_name,
@@ -111,9 +110,8 @@ class AgentSystem:
                 agent=agent,
                 context=context_tasks,
                 tools=tools,
-                output_file=f"debug-{task_name}.md"
+                output_file=f"debug-{task_name}.md" if verbose else None,
             )
-            # print(f"Task {task_name}") # context: {context_tasks}
             tasks.append(task)
         
         return tasks
