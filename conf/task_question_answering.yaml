@@ -1,0 +1,105 @@
+analyze_query_domain_context:
+  description: >
+    Analyze the user's natural language query to identify potential mappings to 
+    actual namespaces and classes in the source code base.
+
+    user-query:
+    {user_query}
+
+    namespaces_metadata.json:
+    {namespaces_metadata_json}
+
+  expected_output: >
+    JSON structure containing:
+    - Potential namespace matches with confidence scores
+    - Potential classes matches with confidence scores (if applicable)
+    - Every reference to namespaces and classes must be fully qualified
+  agent_role: Code_Analyst
+
+rewrite_user_query:
+  description: >
+    Transform the original user query to better align with the domain-specific terminology
+    and namespace structure implemented in the {language} source code base.
+    Consider the prevously analyzed domain context to refine the query.
+
+    original user-query:
+    {user_query}
+
+  expected_output: >
+    A refined version of the user query in which vague or generic terms are substituted with clear,
+    domain-specific references. Fully qualify all references to namespaces or code entities.
+  agent_role: Code_Analyst
+  context: analyze_query_domain_context
+
+analyze_namespaces_details:
+  description: >
+    Retrieve detailed metadata for the relevant namespaces or specific classes.
+  expected_output: >
+    The same response as the tool output.
+  agent_role: Tool_Specialist
+  context: rewrite_user_query
+  tools:
+    - get_namespaces
+
+analyze_response_context:
+  description: >
+    Analyze the rewritten user query and the detailed namespace metadata to generate a structured response.
+    This task involves synthesizing insights from the namespace details to provide a comprehensive explanation
+    that addresses the user query effectively.
+
+  expected_output: >
+    A structured response that combines insights from the namespace metadata with the rewritten user query.
+    The response should provide a clear, concise explanation of the namespace's role, dependencies, and potential
+    entry points, aligning with the user's original query.
+  agent_role: Code_Analyst
+  context:
+    - rewrite_user_query
+    - analyze_namespaces_details
+
+analyze_code_structure:
+  description: >
+    Analyze the code structure of the relevant classes to inspect implementation details of {language} code.
+
+  expected_output: >
+    Source of the relevant classes in the codebase.
+  agent_role: Code_Analyst
+  context:
+    - rewrite_user_query
+    - analyze_response_context
+  tools:
+    - get_file_sources
+
+generate_uml_diagram:
+  description: >
+    Decide the type of UML diagram to generate based on the user query and the namespace details.
+    Generate a UML diagram based on the analyzed namespace details and the user query.
+    The diagram type and content should revelant to the user query.
+    Do not add excessive notes or annotations to the diagram.
+
+  expected_output: >
+    A PlantUML diagram with correct syntax that provide a visual explanation in the context of user query exported as a PNG image.
+  agent_role: Code_Analyst
+  context:
+    - rewrite_user_query
+    - analyze_namespaces_details
+    - analyze_code_structure
+  tools:
+    - plantuml_export
+
+synthesize_response:
+  description: >
+    Generate a concise response based on the analyzed namespace details and the rewritten user query.
+    Do not attempt to generate any diagram, but embed in markdown the generated diagram image `qa_diagram.png`.
+
+    original user-query:
+    {user_query}
+    
+  expected_output: >
+    The response must satisfy the following criteria:
+    - Provide a direct answer to the user query based on the analyzed namespace details.
+    - Include relevant information about the namespace, dependencies and classes.
+  agent_role: Code_Analyst
+  context: 
+    - rewrite_user_query
+    - analyze_response_context
+    - analyze_code_structure

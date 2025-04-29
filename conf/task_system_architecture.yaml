@@ -1,0 +1,123 @@
+get_system_namespaces:
+  description: >
+    Use the tool to extract the namespaces from the JSON metadata of the source code base.
+    Do not make any changes to the tool response.
+
+  expected_output: >
+    The same response as the tool output.
+
+  agent_role: Tool_Specialist
+
+  tools:
+    - list_namespaces
+
+c4_list_containers:
+  description: >
+    Identify the containers for a C4 Container level diagram based on the JSON metadata of the {language} source code base.
+    Focus on identifying the primary deployable building blocks that comprise the system—such as web applications, microservices,
+    databases, and other containers. Clarify that the "system" referenced in the diagram is the one identified in the metadata,
+    and include only those containers that are part of that system.
+    
+  expected_output: >
+    A comprehensive list that includes all containers within the system with descriptions of their responsibilities, roles,
+    and the underlying technologies (if available). Below is an example list of containers; do not include any of these unless supported by metadata.
+    - Web Application: Provides the main user interface and orchestrates user interactions.
+    - API Service: Encapsulates business logic and acts as an intermediary between the UI and backend services.
+    - Database: Responsible for data persistence and retrieval.
+    
+  agent_role: Documentation_Specialist
+  
+  context:
+    - get_system_namespaces
+
+c4_list_container_interactions:
+  description: >
+    Identify the interactions between containers within the system for a C4 Container level diagram based on the JSON metadata of the {language} source code base.
+    Focus on detailing how these containers communicate with each other, including protocols (e.g., REST, messaging) and data flows,
+    while excluding interactions that are not directly relevant to the container-level view.
+    
+  expected_output: >
+    A detailed list of interactions between containers, including communication protocols, data flow descriptions, and dependency relationships.
+    Below is an example list of interactions; do not include any of these unless supported by metadata.
+    - Web Application <--> API Service: Communicates using RESTful HTTP calls.
+    - API Service <--> Database: Interacts via SQL queries over secure connections.
+    
+  agent_role: Documentation_Specialist
+  
+  context:
+    - get_system_namespaces
+
+generate_c4_container_diagram:
+  description: >
+    Using the provided JSON metadata, generate a C4 Container-level diagram in PlantUML format.
+    Include a short textual explanation (up to 100 words) describing the high-level architecture
+    and relationships between containers.
+
+  expected_output: >
+    A well-formatted C4 PlantUML diagram that represents the System Container level diagram. 
+    The diagram should:
+    - Include all containers and their interactions.
+    - Provide a brief description of the high-level architecture and relationships between containers.
+    - Clearly show the boundaries of the system and its containers.
+    - Use appropriate C4 model notations and conventions.
+    - Generate a PNG image of the diagram using the PlantUML tool.
+
+    The diagram should not:
+    - Include implementation details or code-level specifics.
+    - Overcomplicate with too many details that obscure the high-level view.
+    - Include elements that are not part of the system described in the metadata.
+
+    Example C4 System Container diagram in PlantUML:
+    @startuml
+    set separator none
+    title Software System - Containers
+
+    left to right direction
+
+    !include <C4/C4>
+    !include <C4/C4_Context>
+    !include <C4/C4_Container>
+
+    Person(User, "User", $descr="", $tags="", $link="")
+
+    System_Boundary("SoftwareSystem_boundary", "Software System", $tags="") {
+      Container(SoftwareSystem.WebApplication, "Web Application", $techn="", $descr="", $tags="", $link="")
+      ContainerDb(SoftwareSystem.DatabaseSchema, "Database Schema", $techn="", $descr="", $tags="", $link="")
+    }
+
+    Rel(User, SoftwareSystem.WebApplication, "Uses", $techn="", $tags="", $link="")
+    Rel(SoftwareSystem.WebApplication, SoftwareSystem.DatabaseSchema, "Reads from and writes to", $techn="", $tags="", $link="")
+
+    SHOW_LEGEND(true)
+    @enduml
+
+  agent_role: Documentation_Specialist
+
+  tools:
+    - plantuml_export
+
+  context:
+    - c4_list_containers
+    - c4_list_container_interactions
+
+system_architecture_document:
+  description: >
+    Analyze the container metadata and diagram information from the previous tasks to produce a comprehensive System Architecture document.
+    The document should include:
+    1. **Architecture Overview**: A high-level summary of the system architecture, highlighting the roles of the containers and their interactions.
+    2. **Container Diagram**: A link to the exported container diagram image (e.g., "c4_container_diagram.png") to visualize the architecture.
+    3. **Interaction Map**: An explanation of how the containers communicate with each other, including protocols and data flows.
+    4. **Technologies & Tools**: A list of the primary technologies, frameworks, and infrastructure components that underpin the system.
+    
+  expected_output: >
+    A well-structured document that consolidates the system's architectural details. The document should clearly delineate
+    the various containers, their interactions, and the supporting technologies. Use clear headings and subheadings to
+    organize the content effectively.
+
+  agent_role: Documentation_Specialist
+
+  context:
+    - get_system_namespaces
+    - c4_list_containers
+    - c4_list_container_interactions
+    - generate_c4_container_diagram

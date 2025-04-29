@@ -1,0 +1,59 @@
+get_system_namespaces:
+  description: >
+    Use the tool to extract the namespaces from the JSON metadata of the source code base.
+    Do not make any changes to the tool response.
+
+  expected_output: >
+    The same response as the tool output.
+
+  agent_role: Tool_Specialist
+
+  tools:
+    - list_namespaces
+
+list_possible_namespaces:
+  description: >
+    Identify namespaces that likely contain entry points to the {language} source code.
+
+    **How**:
+      1. Scan each namespace and examine imports and classes.
+      2. Check whether the classes or methods have indicative imports or stereotypes.
+         - **CLI/Standalone App**:
+           - Look for a `main` method, or 
+           - References to library or framework entry points
+           - Classes named such way indicating a CLI entry point.
+         - **Web API endpoints**:
+           - Class name indicating a web API entry point or stereotype
+           - Any `Get`, `Post`, `Put`, `Delete` method stereotypes.
+         - **Message/data stream consumers**:
+           - Class name indicating a message consumer or stereotype
+      3. If a namespace has at least one class that meets any of the above patterns,
+         mark that namespace as containing potential entry points.
+
+  expected_output: >
+    A JSON list of pairs, of fully qualified namespace (key) and briefly describe the 
+    discovered indicator. The namespace of the namespace must be a fully qualified as obtained from the source code.
+
+  agent_role: Documentation_Specialist
+
+  context: get_system_namespaces
+
+identify_entrypoints_in_namespaces:
+  description: >
+    List all identified entrypoints discovered in the namespaces.
+
+  expected_output: >
+    The list of each entry point. Do not include any entrypoints that are not supported by the metadata.
+    Output format:
+    ## Entry Points
+    ###  Namespace: `fully.qualified.namespace`
+
+    - **Class Name:** `ClassName`
+    - **Entry Point Type:** (e.g., `Web API Endpoint`, `CLI/Standalone App`, `Message/Data Stream Consumer`)
+    - **Description:** 
+
+  agent_role: Documentation_Specialist
+
+  context:
+    - list_possible_namespaces
+    - get_system_namespaces

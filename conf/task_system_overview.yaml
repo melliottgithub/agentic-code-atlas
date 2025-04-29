@@ -1,0 +1,154 @@
+get_system_namespaces:
+  description: >
+    Use the tool to extract the namespaces from the JSON metadata of the source code base.
+    Do not make any changes to the tool response.
+
+  expected_output: >
+    The same response as the tool output.
+
+  agent_role: Tool_Specialist
+
+  tools:
+    - list_namespaces
+
+c4_list_external_systems:
+  description: >
+    Identify the external systems for an C4 System Context level based on the JSON metadata of the {language} source code base. 
+    Avoid including any elements that do not belong to the C4 System Context level, such as internal components of the system.
+
+    Clarify that the "system" referenced in the diagram is the one identified in the code base metadata. Internal components
+    of the system need not be detailed since the diagram focuses on interactions with external systems and users.
+
+  expected_output: >
+    A comprehensive list that includes all external systems that interact with the system.
+    Below is an example list of external systems with descriptions, do not iclude any of these system unless are supported by metadata.
+    - E-mail System: The internal Microsoft Exchange e-mail system.
+    - Internet Banking System: Allows customers to view information about their bank accounts, and make payments.
+
+  agent_role: Documentation_Specialist
+
+  context:
+    - get_system_namespaces
+
+c4_list_system_users:
+  description: >
+    Identify the users for an C4 System Context level based on the JSON metadata of the {language} source code base. 
+    Avoid including any elements that do not belong to the C4 System Context level, such as internal components of the system.
+
+    Clarify that the "system" referenced in the diagram is the one identified in the code base metadata. Internal components
+    of the system need not be detailed since the diagram focuses on interactions with external systems and users.
+
+  expected_output: >
+    A comprehensive list that includes all users that interact with the system.
+    Below is an example list of userswith descriptions, do not iclude any of these system unless are supported by metadata.
+    - Personal Banking Customer: A customer of the bank, with personal bank accounts.
+    - Support Desk: Supports customers with their accounts.
+
+  agent_role: Documentation_Specialist
+
+  context:
+    - get_system_namespaces
+
+c4_system_context_diagram:
+  description: >
+    Write a PlantUML diagram for the C4 System Context level based on the JSON metadata of the {language} source code base. 
+    The diagram should strictly adhere to the elements defined in the C4 System Context model.
+
+    Clarify that the "system" referenced in the diagram is the one identified in the code base metadata. Internal components
+    of the system need not be detailed since the diagram focuses on interactions with external systems and users.
+
+  expected_output: >
+    A well-formatted PlantUML diagram that represents the C4 System Context level diagram.
+    The diagram should:
+    - Include the system (as identified in the code base metadata), external systems, and users.
+    - Avoid detailing internal components of the system.
+    - Clearly represent the interactions between the system, external systems, and users.
+    - Export the diagram as a PNG image by using the "plantuml_export" tool.
+
+    Example C4 System Context diagram in PlantUML:
+    @startuml c4_system_context
+    set separator none
+    title Internet Banking System - System Context
+    top to bottom direction
+
+    !include <C4/C4>
+    !include <C4/C4_Context>
+
+    AddBoundaryTag("Big Bank plc", $borderColor="#cccccc", $fontColor="#cccccc", $borderStyle="dashed")
+    Boundary(group_1, "Big Bank plc", $tags="Big Bank plc") {
+      System(MainframeBankingSystem, "Mainframe Banking System", $descr="Stores all of the core banking information about customers, accounts, transactions, etc.", $tags="", $link="")
+      System(EmailSystem, "E-mail System", $descr="The internal Microsoft Exchange e-mail system.", $tags="", $link="")
+      System(InternetBankingSystem, "Internet Banking System", $descr="Allows customers to view information about their bank accounts, and make payments.", $tags="", $link="")
+    }
+
+    Person(PersonalBankingCustomer, "Personal Banking Customer", $descr="A customer of the bank, with personal bank accounts.", $tags="", $link="")
+    Person(SupportDesk, "Support Desk", $descr="Supports customers with their accounts.", $tags="", $link="")
+
+    Rel(PersonalBankingCustomer, InternetBankingSystem, "Views account balances, and makes payments using", $techn="", $tags="", $link="")
+    Rel(InternetBankingSystem, MainframeBankingSystem, "Gets account information from, and makes payments using", $techn="", $tags="", $link="")
+    Rel(InternetBankingSystem, EmailSystem, "Sends e-mail using", $techn="", $tags="", $link="")
+    Rel(EmailSystem, PersonalBankingCustomer, "Sends e-mails to", $techn="", $tags="", $link="")
+
+    SHOW_LEGEND(true)
+    @enduml
+
+  agent_role: Documentation_Specialist
+
+  tools:
+    - plantuml_export
+
+  context:
+    - get_system_namespaces
+    - c4_list_system_users
+    - c4_list_external_systems
+
+document_bounded_contexts:
+  description: >
+    Generate Bounded context documentation following the domain-driven guidelines based on JSON metadata of the {language} source code base.
+    For each bounded context, provide:
+    - A concise domain description.
+    - The list of namespaces belonging to that context.
+
+  expected_output: >
+    The documentation must be returned as a valid JSON object with the following structure:
+    {
+      "boundedContexts": [
+        {
+          "name": "<bounded context name>",
+          "description": "<concise domain description>",
+        },
+        ...
+      ]
+    }
+
+  agent_role: Documentation_Specialist
+
+  context:
+    - get_system_namespaces
+
+system_overview:
+  description: >
+    Analyze the namespace metadata and the bounded contexts from the previous task "document_bounded_contexts".
+    This task should produce a high-level system overview document.
+    The document must consolidate information about the system as a whole,
+    referencing the bounded contexts and namespace details of {language} source code to provide context
+    about how the system is structured and what it does at a macro level.
+  
+  expected_output: >
+    Write a document with the following sections:
+    1. **System Overview**: Give a concise description of the system, highlighting
+       the overarching purpose and scope. This should be an easy-to-read introduction
+       that references how bounded contexts fit into the broader structure.
+    2. **System Context Diagram**: Embed a link to "c4_system_context.png" image
+       to visualize the system context.
+    3. **Key Responsibilities**: Describe the major responsibilities or features
+       the system provides, mentioning how the bounded contexts or namespaces
+       support these responsibilities.
+    4. **Technologies & Tools**: List the primary technologies, frameworks, and
+       tools used by the system, including any relevant infrastructure or libraries.
+
+  agent_role: Documentation_Specialist
+
+  context: 
+    - get_system_namespaces
+    - document_bounded_contexts
