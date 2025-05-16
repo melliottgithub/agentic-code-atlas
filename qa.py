@@ -12,7 +12,9 @@ from metadata import Namespace
 from code_meta_tool import CodeMeta, DetectModulesTool, GetClassesMetaTool, GetNamespacesMetaTool, GetFileSourcesTool
 from agents import AgentSystem
 from plantuml_tool import PlantUMLExportTool, createPlantUMLProcessor
-from utils import read_yaml_file, write_file
+from utils import TokenStats, read_yaml_file, write_file
+
+MAX_RPM = 20
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ class GenerationOptions:
     folder_path: str
     plantuml_server: Optional[str] = None,
     question: Optional[str] = None,
+    max_rpm: Optional[int] = None,
     verbose: Optional[bool] = False
 
 def question_answering(metadata: Dict[str, Namespace], options: GenerationOptions):
@@ -51,13 +54,14 @@ def question_answering(metadata: Dict[str, Namespace], options: GenerationOption
         "user_query": options.question,
         "root_namespace": options.root_namespace,
         "namespaces_metadata_json": namespaces_metadata_json,
+        "output_file": options.output_file,
     }    
     
     agents = AgentSystem("Question Answering",
                          llms_data, agents_data, tasks_data, tools=tools,
                          verbose=options.verbose)
     result = agents.execute(inputs)
-    logger.info(result.get('usage_metrics'))
+    print(TokenStats(data=result.get('usage_metrics')))
     return result
 
 def parse_args():
@@ -101,6 +105,12 @@ def parse_args():
         help="Question to ask the system.",
     )
     parser.add_argument(
+        "--max-rpm",
+        "-m",
+        required=False,
+        help="Maximum requests per minute for the LLM API (defaults is 20).",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -111,6 +121,7 @@ def parse_args():
 def main():
     args = parse_args()
     
+    max_rpm = args.max_rpm if args.max_rpm else MAX_RPM
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
     
     file_path, file_ext = os.path.splitext(args.output_file)
@@ -122,6 +133,7 @@ def main():
         folder_path=args.folder_path,
         plantuml_server=args.plantuml_server,
         question=args.question,
+        max_rpm=max_rpm,
         verbose=args.verbose if args.verbose else False
     )
 
@@ -141,6 +153,8 @@ def main():
         
         if file_ext != '.md':
             file_ext += '.md'
+
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         write_file(f"{file_path}{file_ext}", raw_output)
                 
     except Exception as e:

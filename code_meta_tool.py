@@ -1,5 +1,6 @@
 import json
 from collections import defaultdict
+import logging
 import networkx as nx
 import community as community_louvain
 from typing import Dict, List, Optional, Type
@@ -8,6 +9,8 @@ from pydantic import BaseModel, Field, PrivateAttr
 from crewai.tools import BaseTool
 
 from metadata import Namespace
+
+logger = logging.getLogger(__name__)
 
 class CodeMeta:
     """
@@ -173,9 +176,9 @@ class CodeMeta:
         # Compute the modularity of the partitioning.
         try:
             modularity = community_louvain.modularity(partition, G, weight='weight')
-            print(f"Overall modularity: {modularity:.4f}")
+            logger.info(f"Overall modularity: {modularity:.4f}")
         except Exception as e:
-            print(f"Error computing modularity: {e}")
+            logger.error(f"Error computing modularity: {e}")
             modularity = 0.0
         
         # Group namespaces by community id.
@@ -200,7 +203,6 @@ class DetectModulesTool(BaseTool):
         self._code_meta = code_meta
 
     def _run(self) -> str:
-        #print(f"DetectModulesTool -> Detecting modules")
         return json.dumps(self._code_meta.detect_modules(), indent=None)
 
 class ListNamespacesTool(BaseTool):
@@ -215,7 +217,6 @@ class ListNamespacesTool(BaseTool):
         self._code_meta = code_meta
 
     def _run(self) -> str:
-        #print(f"ListNamespacesTool -> Listing namespaces")
         return json.dumps(self._code_meta.list_namespaces(), indent=None)
 
 class GetNamespacesMetaTool(BaseTool):
@@ -234,7 +235,6 @@ class GetNamespacesMetaTool(BaseTool):
         self._code_meta = code_meta
 
     def _run(self, namespace_list: list[str]) -> str:
-        #print(f"GetNamespacesMetaTool -> Namespaces: {namespace_list}")
         return json.dumps(self._code_meta.get_namespaces_meta(namespace_list), indent=None)
 
 class GetClassesMetaTool(BaseTool):
@@ -253,7 +253,6 @@ class GetClassesMetaTool(BaseTool):
         self._code_meta = code_meta
 
     def _run(self, fully_qualified_names: list[str]) -> str:
-        #print(f"GetClassesMetaTool -> Classes: {fully_qualified_names}")
         return json.dumps(self._code_meta.get_classes_meta(fully_qualified_names), indent=None)
 
 class GetFileSourcesTool(BaseTool):
@@ -274,7 +273,7 @@ class GetFileSourcesTool(BaseTool):
         self._root_path = root_path
 
     def _run(self, file_paths: str) -> str:
-        print(f"GetFileSourcesTool -> file_paths: {self._root_path}, file_paths: {len(file_paths)}")
+        logger.info(f"GetFileSourcesTool -> file_paths: {self._root_path}, file_paths: {len(file_paths)}")
         sources_text = ""
         for path in file_paths:
             full_path = f"{self._root_path}/{path}".replace('//', '/')
@@ -285,6 +284,6 @@ class GetFileSourcesTool(BaseTool):
             except Exception as e:
                 print(f"Error reading file {full_path}: {e}")
         # DEBUG: Write to file
-        with open('debug-get-file-sources.txt', 'w') as file:
-            file.write(sources_text)
+        # with open('debug-get-file-sources.txt', 'w') as file:
+        #    file.write(sources_text)
         return sources_text

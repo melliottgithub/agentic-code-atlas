@@ -13,7 +13,9 @@ from code_meta_tool import CodeMeta, ListNamespacesTool
 from agents import AgentSystem
 from metadata import Namespace
 from plantuml_tool import PlantUMLExportTool, createPlantUMLProcessor
-from utils import read_yaml_file, write_file
+from utils import TokenStats, read_yaml_file, write_file
+
+MAX_RPM = 30
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ class GenerationOptions:
     output_dir: str
     folder_path: str
     plantuml_server: Optional[str] = None,
+    max_rpm: Optional[int] = None,
     verbose: Optional[bool] = False
 
 class DocumentationWorkflow:
@@ -32,6 +35,7 @@ class DocumentationWorkflow:
         self.options = options
         self.plantuml_processor = createPlantUMLProcessor(options.plantuml_server)
         self.verbose = self.options.verbose if self.options.verbose else False
+        self.token_stats = TokenStats()
         logger.info(f"PlantUML server: {self.plantuml_processor.url}")
         
     def generate(self):
@@ -40,19 +44,19 @@ class DocumentationWorkflow:
             "root_namespace": self.options.root_namespace,
         }
         
-        logger.info(f"Generating system overview documentation...")
+        print(f"Generating system overview documentation...")
         results = self._generate_system_overview(inputs)
         write_file(f'{self.options.output_dir}/system_overview.md', results.get('raw_output', ''))
         
-        logger.info(f"Generating system architecture documentation...")
+        print(f"Generating system architecture documentation...")
         results = self._generate_system_architecture(inputs)
         write_file(f'{self.options.output_dir}/system_architecture.md', results.get('raw_output', ''))
         
-        logger.info(f"Generating system components documentation...")
+        print(f"Generating system components documentation...")
         results = self._generate_system_components(inputs)
         write_file(f'{self.options.output_dir}/system_components.md', results.get('raw_output', ''))
         
-        logger.info(f"Generating entry points documentation...")
+        print(f"Generating entry points documentation...")
         results = self._identify_entry_points(inputs)
         write_file(f'{self.options.output_dir}/entry_points.md', results.get('raw_output', ''))
 
@@ -68,9 +72,11 @@ class DocumentationWorkflow:
             "plantuml_export": PlantUMLExportTool(self.plantuml_processor, f'{self.options.output_dir}/c4_system_context.png')
         }
 
-        agents = AgentSystem("System Overview", llms_data, agents_data, tasks_data, tools=tools)
+        agents = AgentSystem("System Overview", 
+                             llms_data, agents_data, tasks_data, tools=tools,
+                             max_rpm=self.options.max_rpm, verbose=self.verbose)
         result = agents.execute(inputs)
-        logger.info(result.get('usage_metrics'))
+        self.token_stats.update(result.get('usage_metrics'))
         return result
 
     def _generate_system_architecture(self, inputs: Dict[str, Any]):
@@ -87,7 +93,7 @@ class DocumentationWorkflow:
 
         agents = AgentSystem("System Architecture", llms_data, agents_data, tasks_data, tools=tools)
         result = agents.execute(inputs)
-        logger.info(result.get('usage_metrics'))
+        self.token_stats.update(result.get('usage_metrics'))
         return result
 
     def _generate_system_components(self, inputs: Dict[str, Any]):
@@ -116,7 +122,7 @@ class DocumentationWorkflow:
             agents = AgentSystem("System Components", llms_data, agents_data, tasks_data, tools=tools)
             try:
                 result = agents.execute(inputs)
-                logger.info(result.get('usage_metrics'))
+                self.token_stats.update(result.get('usage_metrics'))
             
                 raw_output += '\n\n' + result.get('raw_output', '')
             except Exception as e:
@@ -137,7 +143,7 @@ class DocumentationWorkflow:
 
         agents = AgentSystem("Identify Entry Points", llms_data, agents_data, tasks_data, tools=tools)
         result = agents.execute(inputs)
-        logger.info(result.get('usage_metrics'))
+        self.token_stats.update(result.get('usage_metrics'))
         return result
 
 def parse_args():
@@ -175,6 +181,12 @@ def parse_args():
         help="PlantUML server URL for generating diagrams.",
     )
     parser.add_argument(
+        "--max-rpm",
+        "-m",
+        required=False,
+        help="Maximum requests per minute for the LLM API (defaults is 30).",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -186,6 +198,7 @@ def parse_args():
 def main():
     args = parse_args()
     
+    max_rpm = args.max_rpm if args.max_rpm else MAX_RPM
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING)
     
     options = GenerationOptions(
@@ -194,6 +207,7 @@ def main():
         output_dir=args.output_dir,
         folder_path=args.folder_path,
         plantuml_server=args.plantuml_server,
+        max_rpm=max_rpm,
         verbose=args.verbose
     )
 
@@ -211,7 +225,8 @@ def main():
         
         workflow = DocumentationWorkflow(namespaces, options)
         workflow.generate()
-
+        
+        print(workflow.token_stats)
 
     except Exception as e:
         traceback.print_exc()

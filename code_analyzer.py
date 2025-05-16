@@ -4,13 +4,13 @@ import sys
 import traceback
 from typing import Dict
 
-from java_parser import JavaCodeParser
+from parsers.java_parser import JavaCodeParser
 from metadata import Namespace
 
 from code_parser import CodeParser
-from kotlin_parser import KotlinCodeParser
-from php_parser import PhpCodeParser
-from python_parser import PythonCodeParser
+from parsers.kotlin_parser import KotlinCodeParser
+from parsers.php_parser import PhpCodeParser
+from parsers.python_parser import PythonCodeParser
 
 # Utility functions
 def save_metadata(metadata_dict, output_path):

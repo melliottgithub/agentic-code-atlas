@@ -89,7 +89,7 @@ generate_uml_diagram:
 synthesize_response:
   description: >
     Generate a concise response based on the analyzed namespace details and the rewritten user query.
-    Do not attempt to generate any diagram, but embed in markdown the generated diagram image `qa_diagram.png`.
+    Do not attempt to generate any diagram, but embed in markdown the generated diagram image `{output_file}.png`.
 
     original user-query:
     {user_query}

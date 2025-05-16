@@ -1,7 +1,7 @@
 system_documenter:
   role: Documentation_Specialist
   max-iterations: 2
-  llm: reasoner
+  llm: chat
   goal: >
     Analyze JSON-based metadata of the source codebase to generate clear, structured software documentation.
     This includes creating C4 Container and Component diagrams, sequence diagrams, interaction matrices,
@@ -20,7 +20,7 @@ system_documenter:
 code_analyst:
   role: Code_Analyst
   max-iterations: 3
-  llm: reasoner
+  llm: chat
   goal: >
     Inspect and interpret the source code metadata to identify structural and functional 
     patterns, potential entrypoints, and optimization opportunities. Provide actionable 
@@ -39,7 +39,7 @@ code_analyst:
 tool_specialist:
   role: Tool_Specialist
   max-iterations: 2
-  llm: chat
+  llm: tool
   goal: >
     Efficiently interact with external tools to gather and generate relevant data 
     without altering the tool's output. Verify and correct input parameters if 
